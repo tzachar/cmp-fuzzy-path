@@ -26,7 +26,7 @@ source.get_keyword_pattern = function(_, params)
 	if (vim.api.nvim_get_mode().mode == 'c') then
 		return [[\S\+]]
 	else
-		return [[[.~/]\=\S\+]]
+		return [[[.~/]\+\S\+]]
 	end
 end
 
