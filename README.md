@@ -11,14 +11,14 @@ Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzf`:
 ```lua
 use {'nvim-telescope/telescope-fzf-native.nvim', run = 'make'}
 use "hrsh7th/nvim-cmp"
-use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
+use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'hrsh7th/cmp-path', 'tzachar/fuzzy.nvim'}}
 ```
 
 Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzy`:
 ```lua
 use {'romgrk/fzy-lua-native', run = 'make'}
 use "hrsh7th/nvim-cmp"
-use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
+use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'hrsh7th/cmp-path', 'tzachar/fuzzy.nvim'}}
 ```
 
 # Setup
@@ -33,7 +33,7 @@ require'cmp'.setup {
 
 This plugin can also be used to complete file names for `:edit` or `:write` in cmdline mode of cmp:
 ```lua
-cmp.setup.cmdline('/', {
+cmp.setup.cmdline(':', {
   sources = cmp.config.sources({
     { name = 'fuzzy_path' }
   })
