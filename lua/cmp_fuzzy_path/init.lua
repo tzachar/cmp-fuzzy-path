@@ -57,6 +57,10 @@ source.complete = function(self, params, callback)
 	end
 
 	local new_pattern, cwd, prefix = find_cwd(pattern)
+	-- check if cwd is valid
+  if not self:_stat(cwd) then
+    return callback()
+  end
 	-- dump(pattern, 'cd to:', cwd, 'look for:', new_pattern, 'prefix:', prefix)
 	local job = fn.jobstart(
 		params.option.fd_cmd,
