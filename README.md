@@ -7,6 +7,8 @@
 Depends on [fuzzy.nvim](https://github.com/tzachar/fuzzy.nvim) (which depends
 either on `fzf` or on `fzy`) and [cmp-path](https://github.com/hrsh7th/cmp-path)
 
+You should also have `fd` in your `PATH`.
+
 Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzf`:
 ```lua
 use {'nvim-telescope/telescope-fzf-native.nvim', run = 'make'}
