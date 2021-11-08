@@ -10,6 +10,7 @@ local defaults = {
 	allowed_cmd_context = {
 		[string.byte('e')] = true,
 		[string.byte('w')] = true,
+		[string.byte('r')] = true,
 	},
 	fd_timeout_msec = 500,
 }
@@ -46,13 +47,23 @@ end
 source.complete = function(self, params, callback)
 	params.option = vim.tbl_deep_extend('keep', params.option, defaults)
 	local is_cmd = (vim.api.nvim_get_mode().mode == 'c')
-	if is_cmd and params.option.allowed_cmd_context[params.context.cursor_before_line:byte(1)] == nil then
-		callback()
-		return
+	-- dump(params.context.cursor_line)
+	if is_cmd then
+		if params.option.allowed_cmd_context[params.context.cursor_line:byte(1)] == nil then
+			-- dump('bad: --' .. params.context.cursor_line .. '--')
+			callback()
+			return
+		elseif params.context.cursor_line:find('%s') == nil then
+			-- we should have a space between, e.g., `edit` and a path
+			-- dump('---' .. params.context.cursor_line .. '---')
+			callback({items={}, isIncomplete=true})
+			return
+		end
 	end
 	local pattern = params.context.cursor_before_line:sub(params.offset)
+	-- dump(pattern)
 	if #pattern == 0 then
-		callback()
+		callback({items={}, isIncomplete=true})
 		return
 	end
 
@@ -62,13 +73,28 @@ source.complete = function(self, params, callback)
     return callback()
   end
 	-- dump(pattern, 'cd to:', cwd, 'look for:', new_pattern, 'prefix:', prefix)
-	local job = fn.jobstart(
+	local items = {}
+	local cb = function(new_items)
+		vim.list_extend(items, new_items)
+		-- dump(#items)
+		callback({
+			items = items,
+			isIncomplete = true,
+		})
+	end
+	local job
+	job = fn.jobstart(
 		params.option.fd_cmd,
 		{
-			stdout_buffered=true,
+			stdout_buffered=false,
 			cwd=cwd,
 			on_stdout=function(_, lines, _)
-				self:process_fd_results(new_pattern, lines, cwd, prefix, callback)
+				if #lines == 0 or (#lines == 1 and lines[1] == '') then
+					callback({items=items, isIncomplete=true})
+					vim.fn.jobstop(job)
+					return
+				end
+				self:process_fd_results(new_pattern, lines, cwd, prefix, cb)
 			end,
 		}
 	)
@@ -93,11 +119,9 @@ source.process_fd_results = function(self, pattern, lines, cwd, prefix, callback
 				data = {path = cwd .. '/' .. item},
 			})
 	end
-	-- dump(#items)
-	callback({
-		items = items,
-		isIncomplete = true,
-	})
+	if #items > 0 then
+		callback(items)
+	end
 end
 
 

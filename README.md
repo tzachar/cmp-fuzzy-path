@@ -43,3 +43,29 @@ cmp.setup.cmdline(':', {
 ```
 
 *Note:* the plugin's name is `fuzzy_path` in `cmp`'s config.
+
+
+# Configuration
+
+Configuration can be passed when configuring `cmp`:
+
+```lua
+cmp.setup.cmdline(':', {
+  sources = cmp.config.sources({
+    { name = 'fuzzy_path', opts = {fd_timeout_msec = 1500} }
+  })
+})
+```
+
+## fd_timeout_msec (type: int)
+
+_Default:_ 500
+
+How much grace to give the file finder before killing it. If you set this to too
+short a value, you will probably not get enough suggestions.
+
+## fd_cmd (type: table(string))
+
+_Default:_ `{'fd', '-d', '20'}`
+
+The commend to use as a file finder.
