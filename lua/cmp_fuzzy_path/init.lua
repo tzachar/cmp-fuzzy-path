@@ -43,6 +43,13 @@ local function find_cwd(pattern)
 	end
 end
 
+source.stat = function(_, path)
+  local stat = vim.loop.fs_stat(path)
+  if stat then
+    return stat
+  end
+  return nil
+end
 
 source.complete = function(self, params, callback)
 	params.option = vim.tbl_deep_extend('keep', params.option, defaults)
@@ -69,7 +76,7 @@ source.complete = function(self, params, callback)
 
 	local new_pattern, cwd, prefix = find_cwd(pattern)
 	-- check if cwd is valid
-  if not self:_stat(cwd) then
+  if not self:stat(cwd) then
     return callback()
   end
 	-- dump(pattern, 'cd to:', cwd, 'look for:', new_pattern, 'prefix:', prefix)
@@ -126,7 +133,7 @@ end
 
 
 source.kind = function(self, path)
-	local stat = self:_stat(path)
+	local stat = self:stat(path)
 	local type = (stat and stat.type) or 'unknown'
 	if type == 'directory' then
 			return cmp.lsp.CompletionItemKind.Folder
