@@ -5,22 +5,20 @@
 # Installation
 
 Depends on [fuzzy.nvim](https://github.com/tzachar/fuzzy.nvim) (which depends
-either on `fzf` or on `fzy`) and [cmp-path](https://github.com/hrsh7th/cmp-path)
+either on `fzf` or on `fzy`).
 
 You should also have `fd` in your `PATH`.
 
 Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzf`:
 ```lua
 use {'nvim-telescope/telescope-fzf-native.nvim', run = 'make'}
-use "hrsh7th/nvim-cmp"
-use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'hrsh7th/cmp-path', 'tzachar/fuzzy.nvim'}}
+use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
 ```
 
 Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzy`:
 ```lua
 use {'romgrk/fzy-lua-native', run = 'make'}
-use "hrsh7th/nvim-cmp"
-use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'hrsh7th/cmp-path', 'tzachar/fuzzy.nvim'}}
+use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
 ```
 
 # Setup
