@@ -1,9 +1,8 @@
 local cmp = require'cmp'
-local cmp_path = require'cmp_path'
 local fn = vim.fn
 local matcher = require('fuzzy_nvim')
 
-local source = vim.deepcopy(cmp_path)
+local source = { }
 
 local defaults = {
 	fd_cmd = {'fd', '-d', '20'},
