@@ -1,11 +1,10 @@
 local cmp = require'cmp'
 local fn = vim.fn
-local matcher = require('fuzzy_nvim')
 
 local source = { }
 
 local defaults = {
-	fd_cmd = {'fd', '-d', '20'},
+	fd_cmd = {'fd', '-d', '20', '-p'},
 	allowed_cmd_context = {
 		[string.byte('e')] = true,
 		[string.byte('w')] = true,
@@ -78,29 +77,40 @@ source.complete = function(self, params, callback)
   if not self:stat(cwd) then
     return callback()
   end
-	-- dump(pattern, 'cd to:', cwd, 'look for:', new_pattern, 'prefix:', prefix)
-	local items = {}
-	local cb = function(new_items)
-		vim.list_extend(items, new_items)
-		-- dump(#items)
-		callback({
-			items = items,
-			isIncomplete = true,
-		})
+
+	if #new_pattern == 0 then
+		callback({items={}, isIncomplete=true})
+		return
 	end
+
+	-- dump(pattern, 'cd to:', cwd, 'look for:', new_pattern, 'prefix:', prefix)
+	-- keep items here, as we reference it in the job's callback
+	local items = {}
+	local path_regex = string.gsub(new_pattern, '(.)', '%1.*')
+	local cmd = vim.tbl_extend('keep', params.option.fd_cmd, {path_regex})
 	local job
 	job = fn.jobstart(
-		params.option.fd_cmd,
+		cmd,
 		{
 			stdout_buffered=false,
 			cwd=cwd,
 			on_stdout=function(_, lines, _)
 				if #lines == 0 or (#lines == 1 and lines[1] == '') then
-					callback({items=items, isIncomplete=true})
 					vim.fn.jobstop(job)
+					callback({items=items, isIncomplete=true})
 					return
 				end
-				self:process_fd_results(new_pattern, lines, cwd, prefix, cb)
+				for _, item in ipairs(lines) do
+					local stat, kind = self:kind(cwd .. '/' .. item)
+					table.insert(
+						items,
+						{
+							label = prefix .. item,
+							kind = kind,
+							-- data is for cmp-path
+							data = {path = cwd .. '/' .. item, stat = stat},
+						})
+				end
 			end,
 		}
 	)
@@ -110,37 +120,44 @@ source.complete = function(self, params, callback)
 	end)
 end
 
-source.process_fd_results = function(self, pattern, lines, cwd, prefix, callback)
-	local matches = matcher:filter(pattern, lines)
-	-- local is_cmd = (vim.api.nvim_get_mode().mode == 'c')
-	local items = {}
-	for _, result in ipairs(matches) do
-		local item = result[1]
-		table.insert(
-			items,
-			{
-				label = prefix .. item,
-				kind = self:kind(cwd .. '/' .. item),
-				-- data is for cmp-path
-				data = {path = cwd .. '/' .. item},
-			})
-	end
-	if #items > 0 then
-		callback(items)
-	end
-end
-
-
 source.kind = function(self, path)
 	local stat = self:stat(path)
 	local type = (stat and stat.type) or 'unknown'
 	if type == 'directory' then
-			return cmp.lsp.CompletionItemKind.Folder
+			return stat, cmp.lsp.CompletionItemKind.Folder
 	elseif type == 'file' then
-			return cmp.lsp.CompletionItemKind.File
+			return stat, cmp.lsp.CompletionItemKind.File
 	else
-		return nil
+		return nil, nil
 	end
+end
+
+local function lines_from(file, count)
+  local bfile = assert(io.open(file, 'rb'))
+  local first_k = bfile:read(1024)
+  if first_k:find('\0') then
+    return {'binary file'}
+  end
+  local lines = {'```'}
+  for line in first_k:gmatch("[^\r\n]+") do
+    lines[#lines + 1] = line
+    if count ~= nil and #lines >= count then
+     break
+    end
+  end
+  lines[#lines + 1] = '```'
+  return lines
+end
+
+source.resolve = function(self, completion_item, callback)
+  local data = completion_item.data
+  if data.stat and data.stat.type == 'file' then
+    local ok, preview_lines = pcall(lines_from, data.path, defaults.max_lines)
+    if ok then
+      completion_item.documentation = preview_lines
+    end
+  end
+  callback(completion_item)
 end
 
 return source

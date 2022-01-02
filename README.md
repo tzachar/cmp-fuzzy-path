@@ -1,25 +1,23 @@
 # cmp-fuzzy-path
 
-`nvim-cmp` source for filesystem paths.
+`nvim-cmp` source for filesystem paths, employing `fd` and regular expressions to
+find files.
+
+To facilitate fuzzy matching, when `cmp-fuzzy-path` tries to find a path the
+path is first transformed to a regular expression like this: `p/t/f` -->
+`p.*/.*t.*/.*f.'`, which will match `path/to/file` and also
+`pa/toooo/other_file`.
 
 # Installation
 
-Depends on [fuzzy.nvim](https://github.com/tzachar/fuzzy.nvim) (which depends
-either on `fzf` or on `fzy`).
-
-You should also have `fd` in your `PATH`.
-
-Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzf`:
+Using [Packer](https://github.com/wbthomason/packer.nvim/):
 ```lua
-use {'nvim-telescope/telescope-fzf-native.nvim', run = 'make'}
-use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
+use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp'}}
 ```
 
-Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzy`:
-```lua
-use {'romgrk/fzy-lua-native', run = 'make'}
-use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
-```
+You should have `fd` in your `PATH`, or edit the configuation to point at the
+exact location.
+
 
 # Setup
 
@@ -64,6 +62,7 @@ short a value, you will probably not get enough suggestions.
 
 ## fd_cmd (type: table(string))
 
-_Default:_ `{'fd', '-d', '20'}`
+_Default:_ `{'fd', '-d', '20', '-p'}`
 
-The commend to use as a file finder.
+The commend to use as a file finder. Note that `-p` is needed so we match on the
+entire path, not just on the file or directory name.
