@@ -37,6 +37,9 @@ local function find_cwd(pattern)
 		return pattern, vim.fn.getcwd(), ''
 	else
 		local prefix = pattern:sub(s, e)
+    if prefix:byte(#prefix) ~= string.byte('/') then
+      prefix = prefix .. '/'
+    end
 		return pattern:sub(e+1), vim.fn.resolve(vim.fn.expand(prefix)), prefix
 	end
 end
@@ -86,8 +89,9 @@ source.complete = function(self, params, callback)
 	-- dump(pattern, 'cd to:', cwd, 'look for:', new_pattern, 'prefix:', prefix)
 	-- keep items here, as we reference it in the job's callback
 	local items = {}
-	local path_regex = string.gsub(new_pattern, '(.)', '%1.*')
-	local cmd = vim.tbl_extend('keep', params.option.fd_cmd, {path_regex})
+	local path_regex = '.*' .. string.gsub(new_pattern, '(.)', '%1.*')
+  local cmd = {unpack(params.option.fd_cmd)}
+  table.insert(cmd, path_regex)
 	local job
 	job = fn.jobstart(
 		cmd,
@@ -101,15 +105,20 @@ source.complete = function(self, params, callback)
 					return
 				end
 				for _, item in ipairs(lines) do
-					local stat, kind = self:kind(cwd .. '/' .. item)
-					table.insert(
-						items,
-						{
-							label = prefix .. item,
-							kind = kind,
-							-- data is for cmp-path
-							data = {path = cwd .. '/' .. item, stat = stat},
-						})
+          if #item > 0 then
+            local stat, kind = self:kind(cwd .. '/' .. item)
+            table.insert(
+              items,
+              {
+                label = prefix .. item,
+                kind = kind,
+                -- data is for cmp-path
+                data = {path = cwd .. '/' .. item, stat = stat},
+                -- hack cmp to not filter our fuzzy matches. If we do not use
+                -- this, the user has to input the first character of the match
+                filterText = string.sub(params.context.cursor_before_line, params.offset),
+              })
+            end
 				end
 			end,
 		}
