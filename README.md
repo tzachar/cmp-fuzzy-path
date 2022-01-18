@@ -91,7 +91,6 @@ cmp.setup({
   sorting = {
     priority_weight = 2,
     comparators = {
-      compare_priority,
       require('cmp_fuzzy_path.compare'),
       compare.offset,
       compare.exact,
