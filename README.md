@@ -3,6 +3,9 @@
 `nvim-cmp` source for filesystem paths, employing `fd` and regular expressions to
 find files.
 
+Depends on [fuzzy.nvim](https://github.com/tzachar/fuzzy.nvim) (which depends
+either on `fzf` or on `fzy`).
+
 To facilitate fuzzy matching, when `cmp-fuzzy-path` tries to find a path the
 path is first transformed to a regular expression like this: `p/t/f` -->
 `p.*/.*t.*/.*f.'`, which will match `path/to/file` and also
@@ -10,9 +13,18 @@ path is first transformed to a regular expression like this: `p/t/f` -->
 
 # Installation
 
-Using [Packer](https://github.com/wbthomason/packer.nvim/):
+Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzf`:
 ```lua
-use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp'}}
+use {'nvim-telescope/telescope-fzf-native.nvim', run = 'make'}
+use "hrsh7th/nvim-cmp"
+use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
+```
+
+Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzy`:
+```lua
+use {'romgrk/fzy-lua-native', run = 'make'}
+use "hrsh7th/nvim-cmp"
+use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
 ```
 
 You should have `fd` in your `PATH`, or edit the configuation to point at the
@@ -48,7 +60,7 @@ Configuration can be passed when configuring `cmp`:
 ```lua
 cmp.setup.cmdline(':', {
   sources = cmp.config.sources({
-    { name = 'fuzzy_path', opts = {fd_timeout_msec = 1500} }
+    { name = 'fuzzy_path', options = {fd_timeout_msec = 1500} }
   })
 })
 ```
@@ -66,3 +78,30 @@ _Default:_ `{'fd', '-d', '20', '-p'}`
 
 The commend to use as a file finder. Note that `-p` is needed so we match on the
 entire path, not just on the file or directory name.
+
+# Sorting
+
+`cmp-fuzzy-path` adds a score entry to each completion item's `data` field,
+which can be used to override `cmp`'s default sorting order:
+
+
+```lua
+local compare = require('cmp.config.compare')
+cmp.setup({
+  sorting = {
+    priority_weight = 2,
+    comparators = {
+      compare_priority,
+      require('cmp_fuzzy_path.compare'),
+      compare.offset,
+      compare.exact,
+      compare.score,
+      compare.recently_used,
+      compare.kind,
+      compare.sort_text,
+      compare.length,
+      compare.order,
+    },
+  },
+}
+```
