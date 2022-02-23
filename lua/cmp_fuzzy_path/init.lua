@@ -22,32 +22,36 @@ source.get_trigger_characters = function()
   return { '.', '/', '~' }
 end
 
+local PATH_REGEX = ([[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]])
+local COMPILED_PATH_REGEX = vim.regex(PATH_REGEX)
+
 source.get_keyword_pattern = function(_, params)
   if vim.api.nvim_get_mode().mode == 'c' then
     return [[\S\+]]
   else
-    return [[[.~/]\+\S\+]]
+    return PATH_REGEX
   end
 end
 
-local PATH_PREFIX_REGEX = vim.regex([[\~\?[./]\+]])
 -- return new_pattern, cwd, prefix
 local function find_cwd(pattern)
-  local s, e = PATH_PREFIX_REGEX:match_str(pattern)
-  if s == nil then
+  local dname = string.gsub(pattern, "(.*[/\\])(.*)", "%1")
+  local basename = string.gsub(pattern, "(.*[/\\])(.*)", "%2")
+  -- dump({pattern = pattern, dname = dname, basename = basename})
+
+  if dname == nil or #dname == 0 or basename == dname then
     return pattern, vim.fn.getcwd(), ''
   else
-    local prefix = pattern:sub(s, e)
-    if prefix:byte(#prefix) ~= string.byte('/') then
-      prefix = prefix .. '/'
+    if dname:byte(#dname) ~= string.byte('/') then
+      dname = dname .. '/'
     end
-    return pattern:sub(e + 1), vim.fn.resolve(vim.fn.expand(prefix)), prefix
+    return basename, vim.fn.resolve(vim.fn.expand(dname)), dname
   end
 end
 
 source.stat = function(_, path)
   local stat = vim.loop.fs_stat(path)
-  if stat then
+  if stat and stat.type then
     return stat
   end
   return nil
@@ -56,6 +60,7 @@ end
 source.complete = function(self, params, callback)
   params.option = vim.tbl_deep_extend('keep', params.option, defaults)
   local is_cmd = (vim.api.nvim_get_mode().mode == 'c')
+  local pattern = nil
   if is_cmd then
     if params.option.allowed_cmd_context[params.context.cursor_line:byte(1)] == nil then
       callback()
@@ -65,27 +70,32 @@ source.complete = function(self, params, callback)
       callback({ items = {}, isIncomplete = true })
       return
     end
-  end
-  local pattern = params.context.cursor_before_line:sub(params.offset)
-  if #pattern == 0 then
-    callback({ items = {}, isIncomplete = true })
-    return
+    pattern = params.context.cursor_before_line:sub(params.offset)
+  else
+    local match_start, match_end = COMPILED_PATH_REGEX:match_str(params.context.cursor_before_line)
+    if not match_start then
+      callback({ items = {}, isIncomplete = true })
+      return
+    end
+    pattern = params.context.cursor_before_line:sub(match_start + 1, match_end + 1)
   end
 
   local new_pattern, cwd, prefix = find_cwd(pattern)
-  -- check if cwd is valid
-  if not self:stat(cwd) then
-    return callback()
-  end
 
-  if #new_pattern == 0 then
+  -- dump({cwd = cwd, prefix = prefix, new_pattern = new_pattern, pattern = pattern})
+
+  -- check if cwd is valid
+  if self:stat(cwd) == nil then
     callback({ items = {}, isIncomplete = true })
     return
   end
 
   -- keep items here, as we reference it in the job's callback
   local items = {}
-  local path_regex = string.gsub(new_pattern, '(.)', '%1.*')
+  local path_regex = '.*'
+  if #new_pattern > 0 then
+    path_regex = string.gsub(new_pattern, '(.)', '%1.*')
+  end
   local cmd = { unpack(params.option.fd_cmd) }
   table.insert(cmd, path_regex)
   local job
@@ -100,10 +110,17 @@ source.complete = function(self, params, callback)
       end
       for _, item in ipairs(lines) do
         if #item > 0 then
-          -- first check if prefix..item matches new_pattern
-          local matches = matcher:filter(new_pattern, { prefix .. item })
-          if #matches > 0 then
-            local score = matches[1][3]
+          -- if new_pattern is empty, we will get no matches
+          local score = nil
+          if #new_pattern == 0 then
+            score = 10
+          else
+            local matches = matcher:filter(new_pattern, { prefix .. item })
+            if #matches > 0 then
+              score = matches[1][3]
+            end
+          end
+          if score ~= nil then
             local stat, kind = self:kind(cwd .. '/' .. item)
             table.insert(items, {
               label = prefix .. item,
@@ -114,6 +131,7 @@ source.complete = function(self, params, callback)
               -- this, the user has to input the first character of the match
               filterText = string.sub(params.context.cursor_before_line, params.offset),
             })
+            -- dump(item, string.sub(params.context.cursor_before_line, params.offset))
           end
         end
       end
