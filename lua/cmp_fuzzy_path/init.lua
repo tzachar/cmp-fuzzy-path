@@ -45,7 +45,9 @@ local function find_cwd(pattern)
     if dname:byte(#dname) ~= string.byte('/') then
       dname = dname .. '/'
     end
-    return basename, vim.fn.resolve(vim.fn.expand(dname)), dname
+    local cwd = vim.fn.resolve(vim.fn.expand(dname))
+    cwd = cwd:gsub('/+', '/'):gsub('\\+', '\\')
+    return basename, cwd, dname
   end
 end
 
@@ -81,8 +83,6 @@ source.complete = function(self, params, callback)
   end
 
   local new_pattern, cwd, prefix = find_cwd(pattern)
-
-  -- dump({cwd = cwd, prefix = prefix, new_pattern = new_pattern, pattern = pattern})
 
   -- check if cwd is valid
   if self:stat(cwd) == nil then
@@ -125,13 +125,12 @@ source.complete = function(self, params, callback)
             table.insert(items, {
               label = prefix .. item,
               kind = kind,
-              -- data is for cmp-path
+              -- data is for the compare function
               data = { path = cwd .. '/' .. item, stat = stat, score = score },
               -- hack cmp to not filter our fuzzy matches. If we do not use
               -- this, the user has to input the first character of the match
               filterText = string.sub(params.context.cursor_before_line, params.offset),
             })
-            -- dump(item, string.sub(params.context.cursor_before_line, params.offset))
           end
         end
       end
