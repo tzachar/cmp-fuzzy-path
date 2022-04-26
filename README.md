@@ -104,3 +104,16 @@ cmp.setup({
   },
 }
 ```
+
+# Commands
+
+`cmp-fuzzy-path` add the following commands:
+
+## `CmpFuzzyStats`
+
+`CmpFuzzyStats` can be used to gather statistics about the operation of the
+plugin. Output contains the following: 
+
+- Total Usage Count: how many times the plugin was called
+- Timeout Count: how many times we reached a timeout
+- Average Search Time: the average time it took to complete the search

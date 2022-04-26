@@ -2,7 +2,11 @@ local cmp = require('cmp')
 local matcher = require('fuzzy_nvim')
 local fn = vim.fn
 
-local source = {}
+local source = {
+  timing_info = {},
+  timeout_count = 0,
+  usage_count = 0,
+}
 
 local defaults = {
   fd_cmd = { 'fd', '-d', '20', '-p', '-i' },
@@ -16,6 +20,18 @@ local defaults = {
 
 source.new = function()
   return setmetatable({}, { __index = source })
+end
+
+source.stats = function(self)
+  local avg_time = 0
+  for _, t in ipairs(self.timing_info) do
+    avg_time = avg_time + t
+  end
+  return string.format([[
+Total Usage Count   : %d
+Timeout Count       : %d
+Average Search Time : %f
+  ]], self.usage_count, self.timeout_count, avg_time / #self.timing_info)
 end
 
 source.get_trigger_characters = function()
@@ -92,23 +108,31 @@ source.complete = function(self, params, callback)
 
   -- keep items here, as we reference it in the job's callback
   local items = {}
-  local path_regex = '.*'
-  if #new_pattern > 0 then
-    path_regex = string.gsub(new_pattern, '(.)', '%1.*')
-  end
   local cmd = { unpack(params.option.fd_cmd) }
-  table.insert(cmd, path_regex)
+  if #new_pattern > 0 then
+    local path_regex = string.gsub(new_pattern, '(.)', '%1.*')
+    table.insert(cmd, path_regex)
+  end
   local job
+  local job_start = vim.fn.reltime()
   job = fn.jobstart(cmd, {
     stdout_buffered = false,
     cwd = cwd,
+    on_exit = function(_, _, _)
+      local time_since_start = vim.fn.reltimefloat(vim.fn.reltime(job_start)) * 1000
+      table.insert(self.timing_info, time_since_start)
+      if time_since_start >= params.option.fd_timeout_msec then
+        self.timeout_count = self.timeout_count + 1
+      end
+    end,
     on_stdout = function(_, lines, _)
       if #lines == 0 or (#lines == 1 and lines[1] == '') then
         vim.fn.jobstop(job)
-        callback({ items = items, isIncomplete = true })
         return
       end
       for _, item in ipairs(lines) do
+        -- remove './' from beginning of line
+        item = item:gsub([[^%./]], '')
         if #item > 0 then
           -- if new_pattern is empty, we will get no matches
           local score = nil
@@ -116,7 +140,7 @@ source.complete = function(self, params, callback)
             score = 10
           else
             local matches = matcher:filter(new_pattern, { prefix .. item })
-            if #matches > 0 then
+            if #(matches or {}) > 0 then
               score = matches[1][3]
             end
           end
@@ -134,9 +158,12 @@ source.complete = function(self, params, callback)
           end
         end
       end
+      -- send all results till now
+      callback({ items = items, isIncomplete = true })
     end,
   })
 
+  self.usage_count = self.usage_count + 1
   vim.fn.timer_start(params.option.fd_timeout_msec, function()
     vim.fn.jobstop(job)
   end)
