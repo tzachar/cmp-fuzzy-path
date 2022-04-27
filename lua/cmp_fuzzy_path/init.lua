@@ -119,6 +119,7 @@ source.complete = function(self, params, callback)
     stdout_buffered = false,
     cwd = cwd,
     on_exit = function(_, _, _)
+      callback({ items = items, isIncomplete = true })
       local time_since_start = vim.fn.reltimefloat(vim.fn.reltime(job_start)) * 1000
       table.insert(self.timing_info, time_since_start)
       if time_since_start >= params.option.fd_timeout_msec then
@@ -158,8 +159,6 @@ source.complete = function(self, params, callback)
           end
         end
       end
-      -- send all results till now
-      callback({ items = items, isIncomplete = true })
     end,
   })
 
