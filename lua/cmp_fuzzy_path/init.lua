@@ -99,9 +99,9 @@ source.complete = function(self, params, callback)
   end
 
   local new_pattern, cwd, prefix = find_cwd(pattern)
-
   -- check if cwd is valid
-  if self:stat(cwd) == nil then
+  local stat = self:stat(cwd)
+  if (stat == nil or stat.type == nil or stat.type ~= 'directory') then
     callback({ items = {}, isIncomplete = true })
     return
   end
