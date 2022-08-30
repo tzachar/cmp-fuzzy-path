@@ -76,11 +76,11 @@ source.stat = function(_, path)
 end
 
 source.complete = function(self, params, callback)
-  params.options = vim.tbl_deep_extend('keep', params.options, defaults)
+  params.option = vim.tbl_deep_extend('keep', params.option, defaults)
   local is_cmd = (vim.api.nvim_get_mode().mode == 'c')
   local pattern = nil
   if is_cmd then
-    if params.options.allowed_cmd_context[params.context.cursor_line:byte(1)] == nil then
+    if params.option.allowed_cmd_context[params.context.cursor_line:byte(1)] == nil then
       callback()
       return
     elseif params.context.cursor_line:find('%s') == nil then
@@ -108,7 +108,7 @@ source.complete = function(self, params, callback)
 
   -- keep items here, as we reference it in the job's callback
   local items = {}
-  local cmd = { unpack(params.options.fd_cmd) }
+  local cmd = { unpack(params.option.fd_cmd) }
   if #new_pattern > 0 then
     local path_regex = string.gsub(new_pattern, '(.)', '%1.*')
     table.insert(cmd, path_regex)
@@ -122,7 +122,7 @@ source.complete = function(self, params, callback)
       callback({ items = items, isIncomplete = true })
       local time_since_start = vim.fn.reltimefloat(vim.fn.reltime(job_start)) * 1000
       table.insert(self.timing_info, time_since_start)
-      if time_since_start >= params.options.fd_timeout_msec then
+      if time_since_start >= params.option.fd_timeout_msec then
         self.timeout_count = self.timeout_count + 1
       end
     end,
@@ -163,7 +163,7 @@ source.complete = function(self, params, callback)
   })
 
   self.usage_count = self.usage_count + 1
-  vim.fn.timer_start(params.options.fd_timeout_msec, function()
+  vim.fn.timer_start(params.option.fd_timeout_msec, function()
     vim.fn.jobstop(job)
   end)
 end

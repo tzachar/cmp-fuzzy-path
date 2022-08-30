@@ -60,7 +60,7 @@ Configuration can be passed when configuring `cmp`:
 ```lua
 cmp.setup.cmdline(':', {
   sources = cmp.config.sources({
-    { name = 'fuzzy_path', options = {fd_timeout_msec = 1500} }
+    { name = 'fuzzy_path', option = {fd_timeout_msec = 1500} }
   })
 })
 ```
