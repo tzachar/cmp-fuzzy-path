@@ -6,6 +6,7 @@ local source = {
   timing_info = {},
   timeout_count = 0,
   usage_count = 0,
+  last_job = nil,
 }
 
 local defaults = {
@@ -113,13 +114,31 @@ source.complete = function(self, params, callback)
     local path_regex = string.gsub(new_pattern, '(.)', '%1.*')
     table.insert(cmd, path_regex)
   end
+
+  local filterText = string.sub(params.context.cursor_before_line, params.offset)
+
+  -- indicate that we are searching for files
+  callback({ items = {{
+    label = 'Searching...',
+    filterText = filterText
+  }}, isIncomplete = true })
   local job
   local job_start = vim.fn.reltime()
   job = fn.jobstart(cmd, {
     stdout_buffered = false,
     cwd = cwd,
     on_exit = function(_, _, _)
-      callback({ items = items, isIncomplete = true })
+      if job ~= self.last_job then
+        return
+      end
+      if #items == 0 then
+        callback({ items = {{
+          label = 'No matched found',
+          filterText = filterText
+        }}, isIncomplete = true })
+      else
+        callback({ items = items, isIncomplete = true })
+      end
       local time_since_start = vim.fn.reltimefloat(vim.fn.reltime(job_start)) * 1000
       table.insert(self.timing_info, time_since_start)
       if time_since_start >= params.option.fd_timeout_msec then
@@ -127,6 +146,9 @@ source.complete = function(self, params, callback)
       end
     end,
     on_stdout = function(_, lines, _)
+      if job ~= self.last_job then
+        return
+      end
       if #lines == 0 or (#lines == 1 and lines[1] == '') then
         vim.fn.jobstop(job)
         return
@@ -154,14 +176,14 @@ source.complete = function(self, params, callback)
               data = { path = cwd .. '/' .. item, stat = stat, score = score },
               -- hack cmp to not filter our fuzzy matches. If we do not use
               -- this, the user has to input the first character of the match
-              filterText = string.sub(params.context.cursor_before_line, params.offset),
+              filterText = filterText,
             })
           end
         end
       end
     end,
   })
-
+  self.last_job = job
   self.usage_count = self.usage_count + 1
   vim.fn.timer_start(params.option.fd_timeout_msec, function()
     vim.fn.jobstop(job)
@@ -197,9 +219,9 @@ local function lines_from(file, count)
   return { kind = cmp.lsp.MarkupKind.Markdown, value = table.concat(lines, '\n') }
 end
 
-source.resolve = function(self, completion_item, callback)
+source.resolve = function(_, completion_item, callback)
   local data = completion_item.data
-  if data.stat and data.stat.type == 'file' then
+  if data and data.stat and data.stat.type == 'file' then
     local ok, preview_lines = pcall(lines_from, data.path, defaults.max_lines)
     if ok then
       completion_item.documentation = preview_lines
