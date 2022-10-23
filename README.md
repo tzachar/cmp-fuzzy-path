@@ -11,6 +11,15 @@ path is first transformed to a regular expression like this: `p/t/f` -->
 `p.*/.*t.*/.*f.'`, which will match `path/to/file` and also
 `pa/toooo/other_file`.
 
+To prevent excessive invocations of this plugin, the completion will only be
+triggered when the string currently being entered matches a path regular
+expression. To quickly trigger completions, make sure to either use a leading `/`
+or a leading './'
+
+In spcecial cases, while in command mode, the plugin will be invoked regardless
+to facilitate faster file searching. This behaviour is implemented only when the
+first character of the command is in `{'e', 'w'}`.
+
 # Installation
 
 Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzf`:
@@ -78,6 +87,9 @@ _Default:_ `{'fd', '-d', '20', '-p'}`
 
 The commend to use as a file finder. Note that `-p` is needed so we match on the
 entire path, not just on the file or directory name.
+
+Please note that, by default, `fd` returns only files. If you want directories,
+you need to add `-t d -t f` to `fd_cmd` table.
 
 # Sorting
 

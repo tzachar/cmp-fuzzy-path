@@ -11,11 +11,6 @@ local source = {
 
 local defaults = {
   fd_cmd = { 'fd', '-d', '20', '-p', '-i' },
-  allowed_cmd_context = {
-    [string.byte('e')] = true,
-    [string.byte('w')] = true,
-    [string.byte('r')] = true,
-  },
   fd_timeout_msec = 500,
 }
 
@@ -41,6 +36,7 @@ end
 
 local PATH_REGEX = ([[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]])
 local COMPILED_PATH_REGEX = vim.regex(PATH_REGEX)
+local COMMAND_SHORTCUT = vim.regex([[\%(e\|w\)\s\+]])
 
 source.get_keyword_pattern = function(_, params)
   if vim.api.nvim_get_mode().mode == 'c' then
@@ -76,27 +72,36 @@ source.stat = function(_, path)
   return nil
 end
 
+local function find_pattern(cursor_before_line)
+  local match_start, match_end = COMPILED_PATH_REGEX:match_str(cursor_before_line)
+  if not match_start then
+    return
+  else
+    return cursor_before_line:sub(match_start + 1, match_end + 1)
+  end
+end
+
 source.complete = function(self, params, callback)
   params.option = vim.tbl_deep_extend('keep', params.option, defaults)
   local is_cmd = (vim.api.nvim_get_mode().mode == 'c')
   local pattern = nil
   if is_cmd then
-    if params.option.allowed_cmd_context[params.context.cursor_line:byte(1)] == nil then
-      callback()
-      return
-    elseif params.context.cursor_line:find('%s') == nil then
+    if params.context.cursor_line:find('%s') == nil then
       -- we should have a space between, e.g., `edit` and a path
       callback({ items = {}, isIncomplete = true })
       return
     end
-    pattern = params.context.cursor_before_line:sub(params.offset)
-  else
-    local match_start, match_end = COMPILED_PATH_REGEX:match_str(params.context.cursor_before_line)
-    if not match_start then
-      callback({ items = {}, isIncomplete = true })
-      return
+    if COMMAND_SHORTCUT:match_str(params.context.cursor_before_line) then
+      pattern = params.context.cursor_before_line:sub(params.offset)
+    else
+      pattern = find_pattern(params.context.cursor_before_line)
     end
-    pattern = params.context.cursor_before_line:sub(match_start + 1, match_end + 1)
+  else
+    pattern = find_pattern(params.context.cursor_before_line)
+  end
+  if not pattern then
+    callback({ items = {}, isIncomplete = true })
+    return
   end
 
   local new_pattern, cwd, prefix = find_cwd(pattern)
@@ -120,7 +125,8 @@ source.complete = function(self, params, callback)
   -- indicate that we are searching for files
   callback({ items = {{
     label = 'Searching...',
-    filterText = filterText
+    filterText = filterText,
+    data = { path = nil, stat = nil, score = nil },
   }}, isIncomplete = true })
   local job
   local job_start = vim.fn.reltime()
@@ -133,8 +139,9 @@ source.complete = function(self, params, callback)
       end
       if #items == 0 then
         callback({ items = {{
-          label = 'No matched found',
-          filterText = filterText
+          label = 'No matches found',
+          filterText = filterText,
+          data = { path = nil, stat = nil, score = nil },
         }}, isIncomplete = true })
       else
         callback({ items = items, isIncomplete = true })
