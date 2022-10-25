@@ -36,7 +36,7 @@ end
 
 local PATH_REGEX = ([[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]])
 local COMPILED_PATH_REGEX = vim.regex(PATH_REGEX)
-local COMMAND_SHORTCUT = vim.regex([[\%(e\|w\)\s\+]])
+local COMMAND_SHORTCUT = vim.regex([[^\%(e\|w\)\s\+]])
 
 source.get_keyword_pattern = function(_, params)
   if vim.api.nvim_get_mode().mode == 'c' then
