@@ -126,7 +126,7 @@ source.complete = function(self, params, callback)
   callback({ items = {{
     label = 'Searching...',
     filterText = filterText,
-    data = { path = nil, stat = nil, score = nil },
+    data = { path = nil, stat = nil, score = -1000 },
   }}, isIncomplete = true })
   local job
   local job_start = vim.fn.reltime()
@@ -141,7 +141,7 @@ source.complete = function(self, params, callback)
         callback({ items = {{
           label = 'No matches found',
           filterText = filterText,
-          data = { path = nil, stat = nil, score = nil },
+          data = { path = nil, stat = nil, score = -1000 },
         }}, isIncomplete = true })
       else
         callback({ items = items, isIncomplete = true })
