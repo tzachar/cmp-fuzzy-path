@@ -23,18 +23,23 @@ source.stats = function(self)
   for _, t in ipairs(self.timing_info) do
     avg_time = avg_time + t
   end
-  return string.format([[
+  return string.format(
+    [[
 Total Usage Count   : %d
 Timeout Count       : %d
 Average Search Time : %f
-  ]], self.usage_count, self.timeout_count, avg_time / #self.timing_info)
+  ]],
+    self.usage_count,
+    self.timeout_count,
+    avg_time / #self.timing_info
+  )
 end
 
 source.get_trigger_characters = function()
   return { '.', '/', '~' }
 end
 
-local PATH_REGEX = ([[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]])
+local PATH_REGEX = [[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]
 local COMPILED_PATH_REGEX = vim.regex(PATH_REGEX)
 local COMMAND_SHORTCUT = vim.regex([[^\%(e\|w\)\s\+]])
 
@@ -48,8 +53,8 @@ end
 
 -- return new_pattern, cwd, prefix
 local function find_cwd(pattern)
-  local dname = string.gsub(pattern, "(.*[/\\])(.*)", "%1")
-  local basename = string.gsub(pattern, "(.*[/\\])(.*)", "%2")
+  local dname = string.gsub(pattern, '(.*[/\\])(.*)', '%1')
+  local basename = string.gsub(pattern, '(.*[/\\])(.*)', '%2')
   -- dump({pattern = pattern, dname = dname, basename = basename})
 
   if dname == nil or #dname == 0 or basename == dname then
@@ -107,7 +112,7 @@ source.complete = function(self, params, callback)
   local new_pattern, cwd, prefix = find_cwd(pattern)
   -- check if cwd is valid
   local stat = self:stat(cwd)
-  if (stat == nil or stat.type == nil or stat.type ~= 'directory') then
+  if stat == nil or stat.type == nil or stat.type ~= 'directory' then
     callback({ items = {}, isIncomplete = true })
     return
   end
@@ -123,11 +128,11 @@ source.complete = function(self, params, callback)
   local filterText = string.sub(params.context.cursor_before_line, params.offset)
 
   -- indicate that we are searching for files
-  callback({ items = {{
+  callback({ items = { {
     label = 'Searching...',
     filterText = filterText,
     data = { path = nil, stat = nil, score = -1000 },
-  }}, isIncomplete = true })
+  } }, isIncomplete = true })
   local job
   local job_start = vim.fn.reltime()
   job = fn.jobstart(cmd, {
@@ -138,11 +143,11 @@ source.complete = function(self, params, callback)
         return
       end
       if #items == 0 then
-        callback({ items = {{
+        callback({ items = { {
           label = 'No matches found',
           filterText = filterText,
           data = { path = nil, stat = nil, score = -1000 },
-        }}, isIncomplete = true })
+        } }, isIncomplete = true })
       else
         callback({ items = items, isIncomplete = true })
       end
@@ -215,7 +220,7 @@ local function lines_from(file, count)
   if first_k:find('\0') then
     return { kind = cmp.lsp.MarkupKind.PlainText, value = 'binary file' }
   end
-  local lines = { '```' .. (vim.filetype.match { filename = file } or '') }
+  local lines = { '```' .. (vim.filetype.match({ filename = file }) or '') }
   for line in first_k:gmatch('[^\r\n]+') do
     lines[#lines + 1] = line
     if count ~= nil and #lines >= count then

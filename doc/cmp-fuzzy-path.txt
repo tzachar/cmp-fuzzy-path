@@ -1,0 +1,166 @@
+*cmp-fuzzy-path.txt*                   fuzzy completion of file paths using fd
+
+==============================================================================
+Table of Contents                           *cmp-fuzzy-path-table-of-contents*
+
+1. cmp-fuzzy-path                              |cmp-fuzzy-path-cmp-fuzzy-path|
+2. Installation                                  |cmp-fuzzy-path-installation|
+3. Setup                                                |cmp-fuzzy-path-setup|
+4. Configuration                                |cmp-fuzzy-path-configuration|
+  - fd_timeout_msec (type: int)|cmp-fuzzy-path-configuration-fd_timeout_msec-(type:-int)|
+  - fd_cmd (type: table(string))|cmp-fuzzy-path-configuration-fd_cmd-(type:-table(string))|
+5. Sorting                                            |cmp-fuzzy-path-sorting|
+6. Commands                                          |cmp-fuzzy-path-commands|
+  - CmpFuzzyStats                      |cmp-fuzzy-path-commands-cmpfuzzystats|
+
+==============================================================================
+1. cmp-fuzzy-path                              *cmp-fuzzy-path-cmp-fuzzy-path*
+
+`nvim-cmp` source for filesystem paths, employing `fd` and regular expressions
+tofind files.
+
+Depends on fuzzy.nvim <https://github.com/tzachar/fuzzy.nvim> (which
+dependseither on `fzf` or on `fzy`).
+
+To facilitate fuzzy matching, when `cmp-fuzzy-path` tries to find a path
+thepath is first transformed to a regular expression like this: `p/t/f`
+–>`p.*/.*t.*/.*f.'`, which will match `path/to/file` and
+also`pa/toooo/other_file`.
+
+To prevent excessive invocations of this plugin, the completion will only
+betriggered when the string currently being entered matches a path
+regularexpression. To quickly trigger completions, make sure to either use a
+leading `/`or a leading './'
+
+In spcecial cases, while in command mode, the plugin will be invoked
+regardlessto facilitate faster file searching. This behaviour is implemented
+only when thefirst character of the command is in `{'e', 'w'}`.
+
+
+==============================================================================
+2. Installation                                  *cmp-fuzzy-path-installation*
+
+Using Packer <https://github.com/wbthomason/packer.nvim/> with `fzf`:
+
+>lua
+    use {'nvim-telescope/telescope-fzf-native.nvim', run = 'make'}
+    use "hrsh7th/nvim-cmp"
+    use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
+<
+
+Using Packer <https://github.com/wbthomason/packer.nvim/> with `fzy`:
+
+>lua
+    use {'romgrk/fzy-lua-native', run = 'make'}
+    use "hrsh7th/nvim-cmp"
+    use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nvim'}}
+<
+
+You should have `fd` in your `PATH`, or edit the configuation to point at
+theexact location.
+
+
+==============================================================================
+3. Setup                                                *cmp-fuzzy-path-setup*
+
+>lua
+    require'cmp'.setup {
+      sources = cmp.config.sources({
+        { name = 'fuzzy_path'},
+      })
+    }
+<
+
+This plugin can also be used to complete file names for `:edit` or `:write` in
+cmdline mode of cmp:
+
+>lua
+    cmp.setup.cmdline(':', {
+      sources = cmp.config.sources({
+        { name = 'fuzzy_path' }
+      })
+    })
+<
+
+_Note:_ the plugin’s name is `fuzzy_path` in `cmp`’s config.
+
+
+==============================================================================
+4. Configuration                                *cmp-fuzzy-path-configuration*
+
+Configuration can be passed when configuring `cmp`:
+
+>lua
+    cmp.setup.cmdline(':', {
+      sources = cmp.config.sources({
+        { name = 'fuzzy_path', option = {fd_timeout_msec = 1500} }
+      })
+    })
+<
+
+
+FD_TIMEOUT_MSEC (TYPE: INT)*cmp-fuzzy-path-configuration-fd_timeout_msec-(type:-int)*
+
+_Default:_ 500
+
+How much grace to give the file finder before killing it. If you set this to
+tooshort a value, you will probably not get enough suggestions.
+
+
+FD_CMD (TYPE: TABLE(STRING))*cmp-fuzzy-path-configuration-fd_cmd-(type:-table(string))*
+
+_Default:_ `{'fd', '-d', '20', '-p'}`
+
+The commend to use as a file finder. Note that `-p` is needed so we match on
+theentire path, not just on the file or directory name.
+
+Please note that, by default, `fd` returns only files. If you want
+directories,you need to add `-t d -t f` to `fd_cmd` table.
+
+
+==============================================================================
+5. Sorting                                            *cmp-fuzzy-path-sorting*
+
+`cmp-fuzzy-path` adds a score entry to each completion item’s `data`
+field,which can be used to override `cmp`’s default sorting order:
+
+>lua
+    local compare = require('cmp.config.compare')
+    cmp.setup({
+      sorting = {
+        priority_weight = 2,
+        comparators = {
+          require('cmp_fuzzy_path.compare'),
+          compare.offset,
+          compare.exact,
+          compare.score,
+          compare.recently_used,
+          compare.kind,
+          compare.sort_text,
+          compare.length,
+          compare.order,
+        },
+      },
+    }
+<
+
+
+==============================================================================
+6. Commands                                          *cmp-fuzzy-path-commands*
+
+`cmp-fuzzy-path` add the following commands:
+
+
+CMPFUZZYSTATS                          *cmp-fuzzy-path-commands-cmpfuzzystats*
+
+`CmpFuzzyStats` can be used to gather statistics about the operation of
+theplugin. Output contains the following:
+
+
+- Total Usage Count: how many times the plugin was called
+- Timeout Count: how many times we reached a timeout
+- Average Search Time: the average time it took to complete the search
+
+Generated by panvimdoc <https://github.com/kdheepak/panvimdoc>
+
+vim:tw=78:ts=8:noet:ft=help:norl:
