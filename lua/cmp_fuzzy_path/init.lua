@@ -9,9 +9,11 @@ local source = {
   last_job = nil,
 }
 
-local defaults = {
+local opts = {
   fd_cmd = { 'fd', '-d', '20', '-p', '-i' },
   fd_timeout_msec = 500,
+  cmd_trigger_regex = [[^\%(e\|w\)\s\+]],
+  path_regex = [[^\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]],
 }
 
 source.new = function()
@@ -39,15 +41,11 @@ source.get_trigger_characters = function()
   return { '.', '/', '~' }
 end
 
-local PATH_REGEX = [[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]
-local COMPILED_PATH_REGEX = vim.regex(PATH_REGEX)
-local COMMAND_SHORTCUT = vim.regex([[^\%(e\|w\)\s\+]])
-
-source.get_keyword_pattern = function(_, params)
+source.get_keyword_pattern = function(_, _)
   if vim.api.nvim_get_mode().mode == 'c' then
     return [[\S\+]]
   else
-    return PATH_REGEX
+    return opts.path_regex
   end
 end
 
@@ -74,7 +72,7 @@ source.stat = function(_, path)
 end
 
 local function find_pattern(cursor_before_line)
-  local match_start, match_end = COMPILED_PATH_REGEX:match_str(cursor_before_line)
+  local match_start, match_end = vim.regex(opts.path_regex):match_str(cursor_before_line)
   if not match_start then
     return
   else
@@ -83,7 +81,7 @@ local function find_pattern(cursor_before_line)
 end
 
 source.complete = function(self, params, callback)
-  params.option = vim.tbl_deep_extend('keep', params.option, defaults)
+  opts = vim.tbl_deep_extend('keep', params.option, opts)
   local is_cmd = (vim.api.nvim_get_mode().mode == 'c')
   local pattern = nil
   if is_cmd then
@@ -92,7 +90,7 @@ source.complete = function(self, params, callback)
       callback({ items = {}, isIncomplete = true })
       return
     end
-    if COMMAND_SHORTCUT:match_str(params.context.cursor_before_line) then
+    if vim.regex(opts.cmd_trigger_regex):match_str(params.context.cursor_before_line) then
       pattern = params.context.cursor_before_line:sub(params.offset)
     else
       pattern = find_pattern(params.context.cursor_before_line)
@@ -115,7 +113,7 @@ source.complete = function(self, params, callback)
 
   -- keep items here, as we reference it in the job's callback
   local items = {}
-  local cmd = { unpack(params.option.fd_cmd) }
+  local cmd = { unpack(opts.fd_cmd) }
   if #new_pattern > 0 then
     local path_regex = string.gsub(new_pattern, '(.)', '%1.*')
     table.insert(cmd, path_regex)
@@ -149,7 +147,7 @@ source.complete = function(self, params, callback)
       end
       local time_since_start = vim.fn.reltimefloat(vim.fn.reltime(job_start)) * 1000
       table.insert(self.timing_info, time_since_start)
-      if time_since_start >= params.option.fd_timeout_msec then
+      if time_since_start >= opts.fd_timeout_msec then
         self.timeout_count = self.timeout_count + 1
       end
     end,
@@ -193,7 +191,7 @@ source.complete = function(self, params, callback)
   })
   self.last_job = job
   self.usage_count = self.usage_count + 1
-  vim.fn.timer_start(params.option.fd_timeout_msec, function()
+  vim.fn.timer_start(opts.fd_timeout_msec, function()
     vim.fn.jobstop(job)
   end)
 end
@@ -230,7 +228,7 @@ end
 source.resolve = function(_, completion_item, callback)
   local data = completion_item.data
   if data and data.stat and data.stat.type == 'file' then
-    local ok, preview_lines = pcall(lines_from, data.path, defaults.max_lines)
+    local ok, preview_lines = pcall(lines_from, data.path, opts.max_lines)
     if ok then
       completion_item.documentation = preview_lines
     end
