@@ -60,11 +60,7 @@ local function find_cwd(pattern)
   if dname == nil or #dname == 0 or basename == dname then
     return pattern, vim.fn.getcwd(), ''
   else
-    if dname:byte(#dname) ~= string.byte('/') then
-      dname = dname .. '/'
-    end
-    local cwd = vim.fn.resolve(vim.fn.expand(dname))
-    cwd = cwd:gsub('/+', '/'):gsub('\\+', '\\')
+    local cwd = vim.fs.normalize(vim.fn.resolve(vim.fs.normalize(dname)))
     return basename, cwd, dname
   end
 end
