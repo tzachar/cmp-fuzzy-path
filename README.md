@@ -91,6 +91,18 @@ entire path, not just on the file or directory name.
 Please note that, by default, `fd` returns only files. If you want directories,
 you need to add `-t d -t f` to `fd_cmd` table.
 
+## cmd_trigger_regex (type: string)
+
+_Default:_ `[[^\%(e\|w\)\s\+]]`
+
+The regular expression to use to trigger the plugin when in command mode.
+
+## path_regex (type: string)
+
+_Default:_ `[[^\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]`
+
+The regular expression to use to match paths.
+
 # Sorting
 
 `cmp-fuzzy-path` adds a score entry to each completion item's `data` field,
