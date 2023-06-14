@@ -16,6 +16,20 @@ local opts = {
   path_regex = [[^\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]],
 }
 
+---Cache compiled regexes
+---@type table<string, userdata>
+local compiled = {}
+
+---Return a compiled regex from the cache, or create a new one and cache it
+---@param pattern string
+---@return userdata
+local function regex(pattern)
+  if not compiled[pattern] then
+    compiled[pattern] = vim.regex(pattern)
+  end
+  return compiled[pattern]
+end
+
 source.new = function()
   return setmetatable({}, { __index = source })
 end
@@ -72,7 +86,7 @@ source.stat = function(_, path)
 end
 
 local function find_pattern(cursor_before_line)
-  local match_start, match_end = vim.regex(opts.path_regex):match_str(cursor_before_line)
+  local match_start, match_end = regex(opts.path_regex):match_str(cursor_before_line)
   if not match_start then
     return
   else
@@ -90,7 +104,7 @@ source.complete = function(self, params, callback)
       callback({ items = {}, isIncomplete = true })
       return
     end
-    if vim.regex(opts.cmd_trigger_regex):match_str(params.context.cursor_before_line) then
+    if regex(opts.cmd_trigger_regex):match_str(params.context.cursor_before_line) then
       pattern = params.context.cursor_before_line:sub(params.offset)
     else
       pattern = find_pattern(params.context.cursor_before_line)
