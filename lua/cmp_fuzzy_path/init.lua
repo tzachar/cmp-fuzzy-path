@@ -41,7 +41,6 @@ end
 
 local PATH_REGEX = [[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]
 local COMPILED_PATH_REGEX = vim.regex(PATH_REGEX)
-local COMMAND_SHORTCUT = vim.regex([[^\%(e\|w\)\s\+]])
 
 source.get_keyword_pattern = function(_, params)
   if vim.api.nvim_get_mode().mode == 'c' then
@@ -92,7 +91,8 @@ source.complete = function(self, params, callback)
       callback({ items = {}, isIncomplete = true })
       return
     end
-    if COMMAND_SHORTCUT:match_str(params.context.cursor_before_line) then
+    local compltype = vim.fn.getcmdcompltype()
+    if compltype == 'file' or compltype == 'dir' then
       pattern = params.context.cursor_before_line:sub(params.offset)
     else
       pattern = find_pattern(params.context.cursor_before_line)
