@@ -118,7 +118,7 @@ source.complete = function(self, params, callback)
   local cmd = { unpack(params.option.fd_cmd) }
 
   -- skip /
-  if cwd == '/' and cmd[1] == "fd" then
+  if cwd == '/' and cmd[1] == 'fd' then
     local new_cmd = {}
     local skip = false
     for _, value in ipairs(cmd) do
