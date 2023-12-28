@@ -116,6 +116,28 @@ source.complete = function(self, params, callback)
   -- keep items here, as we reference it in the job's callback
   local items = {}
   local cmd = { unpack(params.option.fd_cmd) }
+
+  -- skip /
+  if cwd == '/' and cmd[1] == "fd" then
+    local new_cmd = {}
+    local skip = false
+    for _, value in ipairs(cmd) do
+      if not skip then
+        if value == '-d' or value == '--max-depth' then
+          skip = true
+        else
+          table.insert(new_cmd, value)
+        end
+      else
+        skip = false
+      end
+    end
+    table.insert(new_cmd, '-d')
+    table.insert(new_cmd, '1')
+    cmd = new_cmd
+    dump('skipping root', cmd)
+  end
+
   if #new_pattern > 0 then
     local path_regex = string.gsub(new_pattern, '(.)', '%1.*')
     table.insert(cmd, path_regex)
