@@ -135,7 +135,7 @@ source.complete = function(self, params, callback)
     table.insert(new_cmd, '-d')
     table.insert(new_cmd, '1')
     cmd = new_cmd
-    dump('skipping root', cmd)
+    -- dump('skipping root', cmd)
   end
 
   if #new_pattern > 0 then
