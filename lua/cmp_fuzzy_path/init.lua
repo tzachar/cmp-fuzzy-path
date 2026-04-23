@@ -12,6 +12,7 @@ local source = {
 local defaults = {
   fd_cmd = { 'fd', '-d', '20', '-p', '-i' },
   fd_timeout_msec = 500,
+  path_regex = [[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]
 }
 
 source.new = function()
@@ -39,14 +40,14 @@ source.get_trigger_characters = function()
   return { '.', '/', '~' }
 end
 
-local PATH_REGEX = [[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]
-local COMPILED_PATH_REGEX = vim.regex(PATH_REGEX)
+local COMPILED_PATH_REGEX = vim.regex(defaults.path_regex)
 
 source.get_keyword_pattern = function(_, params)
+  COMPILED_PATH_REGEX = vim.regex(params.option.path_regex)
   if vim.api.nvim_get_mode().mode == 'c' then
     return [[\S\+]]
   else
-    return PATH_REGEX
+    return params.option.path_regex
   end
 end
 
@@ -146,11 +147,14 @@ source.complete = function(self, params, callback)
   local filterText = string.sub(params.context.cursor_before_line, params.offset)
 
   -- indicate that we are searching for files
-  callback({ items = { {
-    label = 'Searching...',
-    filterText = filterText,
-    data = { path = nil, stat = nil, score = -1000 },
-  } }, isIncomplete = true })
+  callback({
+    items = { {
+      label = 'Searching...',
+      filterText = filterText,
+      data = { path = nil, stat = nil, score = -1000 },
+    } },
+    isIncomplete = true
+  })
   local job
   local job_start = vim.fn.reltime()
   job = fn.jobstart(cmd, {
@@ -161,11 +165,14 @@ source.complete = function(self, params, callback)
         return
       end
       if #items == 0 then
-        callback({ items = { {
-          label = 'No matches found',
-          filterText = filterText,
-          data = { path = nil, stat = nil, score = -1000 },
-        } }, isIncomplete = true })
+        callback({
+          items = { {
+            label = 'No matches found',
+            filterText = filterText,
+            data = { path = nil, stat = nil, score = -1000 },
+          } },
+          isIncomplete = true
+        })
       else
         callback({ items = items, isIncomplete = true })
       end
