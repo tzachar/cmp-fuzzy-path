@@ -12,6 +12,11 @@ local source = {
 local defaults = {
   fd_cmd = { 'fd', '-d', '20', '-p', '-i' },
   fd_timeout_msec = 500,
+  path_regex = [[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]
+}
+
+local compiled_path_regexes = {
+  [defaults.path_regex] = vim.regex(defaults.path_regex),
 }
 
 source.new = function()
@@ -39,14 +44,20 @@ source.get_trigger_characters = function()
   return { '.', '/', '~' }
 end
 
-local PATH_REGEX = [[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]
-local COMPILED_PATH_REGEX = vim.regex(PATH_REGEX)
+local function get_compiled_path_regex(path_regex)
+  local pattern = path_regex or defaults.path_regex
+  if compiled_path_regexes[pattern] == nil then
+    compiled_path_regexes[pattern] = vim.regex(pattern)
+  end
+  return compiled_path_regexes[pattern]
+end
 
 source.get_keyword_pattern = function(_, params)
+  local option = vim.tbl_deep_extend('keep', params.option or {}, defaults)
   if vim.api.nvim_get_mode().mode == 'c' then
     return [[\S\+]]
   else
-    return PATH_REGEX
+    return option.path_regex
   end
 end
 
@@ -72,8 +83,8 @@ source.stat = function(_, path)
   return nil
 end
 
-local function find_pattern(cursor_before_line)
-  local match_start, match_end = COMPILED_PATH_REGEX:match_str(cursor_before_line)
+local function find_pattern(cursor_before_line, compiled_path_regex)
+  local match_start, match_end = compiled_path_regex:match_str(cursor_before_line)
   if not match_start then
     return
   else
@@ -83,6 +94,7 @@ end
 
 source.complete = function(self, params, callback)
   params.option = vim.tbl_deep_extend('keep', params.option, defaults)
+  local compiled_path_regex = get_compiled_path_regex(params.option.path_regex)
   local is_cmd = (vim.api.nvim_get_mode().mode == 'c')
   local pattern = nil
   if is_cmd then
@@ -95,10 +107,10 @@ source.complete = function(self, params, callback)
     if compltype == 'file' or compltype == 'dir' then
       pattern = params.context.cursor_before_line:sub(params.offset)
     else
-      pattern = find_pattern(params.context.cursor_before_line)
+      pattern = find_pattern(params.context.cursor_before_line, compiled_path_regex)
     end
   else
-    pattern = find_pattern(params.context.cursor_before_line)
+    pattern = find_pattern(params.context.cursor_before_line, compiled_path_regex)
   end
   if not pattern then
     callback({ items = {}, isIncomplete = true })
@@ -146,11 +158,14 @@ source.complete = function(self, params, callback)
   local filterText = string.sub(params.context.cursor_before_line, params.offset)
 
   -- indicate that we are searching for files
-  callback({ items = { {
-    label = 'Searching...',
-    filterText = filterText,
-    data = { path = nil, stat = nil, score = -1000 },
-  } }, isIncomplete = true })
+  callback({
+    items = { {
+      label = 'Searching...',
+      filterText = filterText,
+      data = { path = nil, stat = nil, score = -1000 },
+    } },
+    isIncomplete = true
+  })
   local job
   local job_start = vim.fn.reltime()
   job = fn.jobstart(cmd, {
@@ -161,11 +176,14 @@ source.complete = function(self, params, callback)
         return
       end
       if #items == 0 then
-        callback({ items = { {
-          label = 'No matches found',
-          filterText = filterText,
-          data = { path = nil, stat = nil, score = -1000 },
-        } }, isIncomplete = true })
+        callback({
+          items = { {
+            label = 'No matches found',
+            filterText = filterText,
+            data = { path = nil, stat = nil, score = -1000 },
+          } },
+          isIncomplete = true
+        })
       else
         callback({ items = items, isIncomplete = true })
       end

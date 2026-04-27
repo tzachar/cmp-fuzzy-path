@@ -23,6 +23,7 @@ first character of the command is in `{'e', 'w'}`.
 # Installation
 
 Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzf`:
+
 ```lua
 use {'nvim-telescope/telescope-fzf-native.nvim', run = 'make'}
 use "hrsh7th/nvim-cmp"
@@ -30,6 +31,7 @@ use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nv
 ```
 
 Using [Packer](https://github.com/wbthomason/packer.nvim/) with `fzy`:
+
 ```lua
 use {'romgrk/fzy-lua-native', run = 'make'}
 use "hrsh7th/nvim-cmp"
@@ -38,7 +40,6 @@ use {'tzachar/cmp-fuzzy-path', requires = {'hrsh7th/nvim-cmp', 'tzachar/fuzzy.nv
 
 You should have `fd` in your `PATH`, or edit the configuation to point at the
 exact location.
-
 
 # Setup
 
@@ -51,6 +52,7 @@ require'cmp'.setup {
 ```
 
 This plugin can also be used to complete file names for `:edit` or `:write` in cmdline mode of cmp:
+
 ```lua
 cmp.setup.cmdline(':', {
   sources = cmp.config.sources({
@@ -60,7 +62,6 @@ cmp.setup.cmdline(':', {
 ```
 
 *Note:* the plugin's name is `fuzzy_path` in `cmp`'s config.
-
 
 # Configuration
 
@@ -76,14 +77,14 @@ cmp.setup.cmdline(':', {
 
 ## fd_timeout_msec (type: int)
 
-_Default:_ 500
+*Default:* 500
 
 How much grace to give the file finder before killing it. If you set this to too
 short a value, you will probably not get enough suggestions.
 
 ## fd_cmd (type: table(string))
 
-_Default:_ `{'fd', '-d', '20', '-p'}`
+*Default:* `{'fd', '-d', '20', '-p'}`
 
 The commend to use as a file finder. Note that `-p` is needed so we match on the
 entire path, not just on the file or directory name.
@@ -91,11 +92,18 @@ entire path, not just on the file or directory name.
 Please note that, by default, `fd` returns only files. If you want directories,
 you need to add `-t d -t f` to `fd_cmd` table.
 
+## path_regex (type: string)
+
+*Default:* `[[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]`
+
+The path regular expression to complete.
+
+The default `path_regex` ensures the completions triggered only a certain query string entered as we noticed before. If you want to trigger immediately, you may set it like `[[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S*]]`.
+
 # Sorting
 
 `cmp-fuzzy-path` adds a score entry to each completion item's `data` field,
 which can be used to override `cmp`'s default sorting order:
-
 
 ```lua
 local compare = require('cmp.config.compare')
@@ -124,7 +132,7 @@ cmp.setup({
 ## `CmpFuzzyStats`
 
 `CmpFuzzyStats` can be used to gather statistics about the operation of the
-plugin. Output contains the following: 
+plugin. Output contains the following:
 
 - Total Usage Count: how many times the plugin was called
 - Timeout Count: how many times we reached a timeout
