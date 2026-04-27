@@ -15,6 +15,10 @@ local defaults = {
   path_regex = [[\%(\k\?[/:\~]\+\|\.\?\.\/\)\S\+]]
 }
 
+local compiled_path_regexes = {
+  [defaults.path_regex] = vim.regex(defaults.path_regex),
+}
+
 source.new = function()
   return setmetatable({}, { __index = source })
 end
@@ -40,14 +44,20 @@ source.get_trigger_characters = function()
   return { '.', '/', '~' }
 end
 
-local COMPILED_PATH_REGEX = vim.regex(defaults.path_regex)
+local function get_compiled_path_regex(path_regex)
+  local pattern = path_regex or defaults.path_regex
+  if compiled_path_regexes[pattern] == nil then
+    compiled_path_regexes[pattern] = vim.regex(pattern)
+  end
+  return compiled_path_regexes[pattern]
+end
 
 source.get_keyword_pattern = function(_, params)
-  COMPILED_PATH_REGEX = vim.regex(params.option.path_regex)
+  local option = vim.tbl_deep_extend('keep', params.option or {}, defaults)
   if vim.api.nvim_get_mode().mode == 'c' then
     return [[\S\+]]
   else
-    return params.option.path_regex
+    return option.path_regex
   end
 end
 
@@ -73,8 +83,8 @@ source.stat = function(_, path)
   return nil
 end
 
-local function find_pattern(cursor_before_line)
-  local match_start, match_end = COMPILED_PATH_REGEX:match_str(cursor_before_line)
+local function find_pattern(cursor_before_line, compiled_path_regex)
+  local match_start, match_end = compiled_path_regex:match_str(cursor_before_line)
   if not match_start then
     return
   else
@@ -84,6 +94,7 @@ end
 
 source.complete = function(self, params, callback)
   params.option = vim.tbl_deep_extend('keep', params.option, defaults)
+  local compiled_path_regex = get_compiled_path_regex(params.option.path_regex)
   local is_cmd = (vim.api.nvim_get_mode().mode == 'c')
   local pattern = nil
   if is_cmd then
@@ -96,10 +107,10 @@ source.complete = function(self, params, callback)
     if compltype == 'file' or compltype == 'dir' then
       pattern = params.context.cursor_before_line:sub(params.offset)
     else
-      pattern = find_pattern(params.context.cursor_before_line)
+      pattern = find_pattern(params.context.cursor_before_line, compiled_path_regex)
     end
   else
-    pattern = find_pattern(params.context.cursor_before_line)
+    pattern = find_pattern(params.context.cursor_before_line, compiled_path_regex)
   end
   if not pattern then
     callback({ items = {}, isIncomplete = true })
